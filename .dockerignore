@@ -1,0 +1,29 @@
+# Ignore local virtual environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Ignore local git metadata
+.git/
+.gitignore
+
+# Ignore local runtime indices and temporary files
+.brain/
+**/.brain/
+*.log
+*.tmp
+*.png
+verify_ui.py
+playwright/
+
+# Prevent copying any personal or private notes outside sample_notes
+notes/
+personal/
+private/
+my_notes/
+docs/

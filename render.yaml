@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: brain-search-engine
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: BRAIN_NOTES_DIR
+        value: /app/sample_notes
+      - key: BRAIN_WEB_DIR
+        value: /app/web
