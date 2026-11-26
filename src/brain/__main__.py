@@ -1,0 +1,7 @@
+"""Entry point for python -m brain execution."""
+
+import sys
+from brain.cli import main
+
+if __name__ == "__main__":
+    sys.exit(main())
