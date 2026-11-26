@@ -46,10 +46,13 @@ def compute_inline_script_sha256(html_path: Path) -> str:
     if not html_path.exists():
         return ""
     try:
-        content = html_path.read_text(encoding="utf-8")
-        match = re.search(r"<script>([\s\S]*?)</script>", content)
-        if match:
-            script_bytes = match.group(1).encode("utf-8")
+        raw = html_path.read_bytes()
+        start_tag = b"<script>"
+        end_tag = b"</script>"
+        start_idx = raw.find(start_tag)
+        end_idx = raw.find(end_tag, start_idx)
+        if start_idx != -1 and end_idx != -1:
+            script_bytes = raw[start_idx + len(start_tag):end_idx]
             digest = hashlib.sha256(script_bytes).digest()
             b64 = base64.b64encode(digest).decode("ascii")
             return f"'sha256-{b64}'"
@@ -80,28 +83,68 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """In-memory sliding window rate limiter: maximum 60 requests per minute per IP."""
+    """In-memory sliding window rate limiter: maximum 60 requests per minute per IP.
 
-    def __init__(self, app: Any, max_requests: int = 60, window_seconds: int = 60) -> None:
+    Resistant to spoofed X-Forwarded-For headers behind reverse proxies (taking
+    the rightmost client-connecting IP appended by Google Front End/Cloud Run),
+    and automatically evicts expired entries so memory cannot grow without bound.
+    """
+
+    def __init__(
+        self,
+        app: Any,
+        max_requests: int = 60,
+        window_seconds: int = 60,
+        max_tracked_ips: int = 10000,
+    ) -> None:
         super().__init__(app)
         self.max_requests = max_requests
         self.window_seconds = window_seconds
+        self.max_tracked_ips = max_tracked_ips
         self.ip_timestamps: dict[str, deque[float]] = defaultdict(deque)
+        self.last_cleanup = time.time()
+
+    def _cleanup_stale_entries(self, now: float) -> None:
+        """Purge inactive IPs whose timestamps are outside the active window."""
+        cutoff = now - self.window_seconds
+        stale_keys = [
+            ip for ip, timestamps in self.ip_timestamps.items()
+            if not timestamps or timestamps[-1] <= cutoff
+        ]
+        for ip in stale_keys:
+            self.ip_timestamps.pop(ip, None)
+
+        # Hard ceiling: if tracked entries exceed capacity, evict oldest
+        if len(self.ip_timestamps) > self.max_tracked_ips:
+            excess = len(self.ip_timestamps) - self.max_tracked_ips
+            keys_to_drop = list(self.ip_timestamps.keys())[:excess]
+            for ip in keys_to_drop:
+                self.ip_timestamps.pop(ip, None)
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
-        # Extract client IP safely from X-Forwarded-For (first entry) or client connection
+        # Behind Cloud Run / reverse proxies, Google Front End appends the real
+        # client IP to the end of the X-Forwarded-For chain. Taking the rightmost
+        # entry ensures client-spoofed prefix IPs (e.g. "X-Forwarded-For: 1.1.1.1")
+        # cannot bypass the rate limiter.
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
+            ips = [item.strip() for item in forwarded.split(",") if item.strip()]
+            client_ip = ips[-1] if ips else "127.0.0.1"
         elif request.client and request.client.host:
             client_ip = request.client.host
         else:
             client_ip = "127.0.0.1"
 
         now = time.time()
+
+        # Periodic cleanup of expired IP records to strictly bound memory
+        if now - self.last_cleanup > self.window_seconds or len(self.ip_timestamps) > 1000:
+            self._cleanup_stale_entries(now)
+            self.last_cleanup = now
+
         q = self.ip_timestamps[client_ip]
 
-        # Evict timestamps outside the active window
+        # Evict timestamps outside active sliding window for current IP
         while q and q[0] <= now - self.window_seconds:
             q.popleft()
 

@@ -3,6 +3,7 @@
 venv/
 __pycache__/
 *.py[cod]
+# Note: tests/ is intentionally NOT ignored here so Stage 1 can run the test suite; Stage 2 does not copy it into runtime.
 .pytest_cache/
 *.egg-info/
 build/

@@ -22,12 +22,16 @@ RUN pip install --no-cache-dir ".[web,semantic,dev]"
 
 # Execute the complete test suite on Python 3.11
 # The container build will strictly FAIL if any test fails
-RUN pytest -v --tb=short
+RUN pytest -v --tb=short && touch /tmp/.tests_passed
 
 # ==========================================
 # Stage 2: Minimal Secure Runtime
 # ==========================================
 FROM python:3.11-slim AS runtime
+
+# Enforce dependency on Stage 1 passing tests (prevents BuildKit from pruning the test stage)
+COPY --from=test /tmp/.tests_passed /tmp/.tests_passed
+RUN rm -f /tmp/.tests_passed
 
 # Create an unprivileged non-root user
 RUN useradd -m -u 1000 -s /bin/bash appuser
@@ -60,4 +64,4 @@ USER appuser
 EXPOSE 8080
 
 # Launch uvicorn on 0.0.0.0:$PORT with proxy headers enabled
-CMD ["sh", "-c", "uvicorn brain.api:create_app --factory --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers"]
+CMD ["sh", "-c", "uvicorn brain.api:create_app --factory --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips='*'"]

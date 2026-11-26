@@ -246,9 +246,17 @@ gcloud run deploy brain `
 
 #### Setting Budget Alerts & Teardown:
 - **Budget Alert**: In Google Cloud Console > **Billing** > **Budgets & Alerts** > Create budget (e.g. $1.00 limit with email notifications at 50%, 90%, 100%).
-- **Teardown Command**: To completely remove the service and prevent any future charges:
+- **Service Teardown**: To delete the Cloud Run service:
   ```powershell
   gcloud run services delete brain --region asia-south1 --quiet
+  ```
+- **Important: Artifact Registry & Cloud Storage Leftovers**:
+  When deploying with `gcloud run deploy --source .`, Google Cloud Build automatically stores your built container images in **Artifact Registry** (repository: `cloud-run-source-deploy`) and uploads source tarballs and build logs to **Cloud Storage** buckets (`<PROJECT_ID>_cloudbuild` and `artifacts.<PROJECT_ID>.appspot.com`).
+  Deleting only the Cloud Run service leaves these container images and build logs behind, which can incur small ongoing storage charges.
+- **Complete Project Teardown (Zero Leftovers)**:
+  To eliminate all resources, storage buckets, container repositories, and any chance of lingering costs in one step:
+  ```powershell
+  gcloud projects delete $PROJECT_ID
   ```
 
 ---

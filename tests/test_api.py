@@ -234,3 +234,85 @@ def test_rate_limiter_returns_429(client: TestClient):
     assert "rate limit exceeded" in data["error"].lower()
     assert "Retry-After" in r_limited.headers
 
+
+def test_csp_hash_matches_served_html_bytes(client: TestClient):
+    """Verify that the inline-script SHA-256 hash in CSP matches the exact bytes of the served HTML."""
+    import base64
+    import hashlib
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html_bytes = resp.content
+
+    # Extract exact bytes between <script> and </script>
+    start_tag = b"<script>"
+    end_tag = b"</script>"
+    start_pos = html_bytes.find(start_tag)
+    end_pos = html_bytes.find(end_tag, start_pos)
+    assert start_pos != -1, "No <script> tag found in served HTML"
+    assert end_pos != -1, "No </script> tag found in served HTML"
+
+    script_bytes = html_bytes[start_pos + len(start_tag):end_pos]
+    digest = hashlib.sha256(script_bytes).digest()
+    b64_digest = base64.b64encode(digest).decode("ascii")
+    expected_token = f"'sha256-{b64_digest}'"
+
+    csp = resp.headers.get("content-security-policy", "")
+    assert expected_token in csp, f"Expected CSP token {expected_token} not found in header: {csp}"
+
+    # Verify script-src does not contain 'unsafe-inline'
+    script_src_part = [p for p in csp.split(";") if "script-src" in p]
+    assert script_src_part, "No script-src directive in CSP header"
+    assert "'unsafe-inline'" not in script_src_part[0], f"'unsafe-inline' unexpectedly found in script-src: {script_src_part[0]}"
+
+
+def test_rate_limiter_spoofed_forwarded_for(client: TestClient):
+    """Verify rate limiter is resistant to spoofed X-Forwarded-For headers (extracts rightmost IP)."""
+    # Attacker attempts to rotate fake leftmost IPs: "10.0.0.1", "10.0.0.2", etc.
+    # Cloud Run / reverse proxy appends real connecting IP "198.51.100.77" to the end
+    for i in range(60):
+        spoofed_header = {"X-Forwarded-For": f"10.0.0.{i}, 198.51.100.77"}
+        resp = client.get("/health", headers=spoofed_header)
+        assert resp.status_code == 200, f"Request {i+1} failed"
+
+    # 61st request with yet another fake prefix must still be blocked under real IP 198.51.100.77
+    blocked = client.get("/health", headers={"X-Forwarded-For": "10.0.0.999, 198.51.100.77"})
+    assert blocked.status_code == 429
+    assert "rate limit exceeded" in blocked.json()["error"].lower()
+
+
+def test_rate_limiter_memory_eviction():
+    """Verify that expired IP records are purged so memory cannot grow without bound."""
+    from brain.api import RateLimitMiddleware
+    from collections import deque
+    import time
+
+    middleware = RateLimitMiddleware(app=None, max_requests=10, window_seconds=60, max_tracked_ips=5)
+    now = time.time()
+
+    # Add expired IPs (active 120 seconds ago)
+    middleware.ip_timestamps["192.0.2.1"] = deque([now - 120, now - 110])
+    middleware.ip_timestamps["192.0.2.2"] = deque([now - 90])
+
+    # Add an active IP (active 10 seconds ago)
+    middleware.ip_timestamps["192.0.2.3"] = deque([now - 10])
+
+    assert len(middleware.ip_timestamps) == 3
+
+    # Trigger cleanup
+    middleware._cleanup_stale_entries(now)
+
+    # Expired IPs must be evicted; active IP must remain
+    assert "192.0.2.1" not in middleware.ip_timestamps
+    assert "192.0.2.2" not in middleware.ip_timestamps
+    assert "192.0.2.3" in middleware.ip_timestamps
+    assert len(middleware.ip_timestamps) == 1
+
+    # Verify hard ceiling enforcement
+    for i in range(10):
+        middleware.ip_timestamps[f"10.1.{i}.1"] = deque([now])
+    assert len(middleware.ip_timestamps) == 11
+    middleware._cleanup_stale_entries(now)
+    assert len(middleware.ip_timestamps) <= middleware.max_tracked_ips
+
+
