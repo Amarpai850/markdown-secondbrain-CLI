@@ -20,6 +20,12 @@ COPY tests/ ./tests/
 # Install with web, semantic, and development dependencies
 RUN pip install --no-cache-dir ".[web,semantic,dev]"
 
+# Configure test environment so non-editable install can locate web and sample_notes assets
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    BRAIN_WEB_DIR=/build/web \
+    BRAIN_NOTES_DIR=/build/sample_notes
+
 # Execute the complete test suite on Python 3.11
 # The container build will strictly FAIL if any test fails
 RUN pytest -v --tb=short && touch /tmp/.tests_passed
