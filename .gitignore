@@ -3,6 +3,19 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .brain/
+**/.brain/
 *.egg-info/
 build/
 dist/
+
+# Environment & secrets
+.env
+.env.*
+
+# Local agent scratch, cache, and artifact folders
+.gemini/
+.claude/
+.agent/
+scratch/
+.uv_cache/
+.uv_python/

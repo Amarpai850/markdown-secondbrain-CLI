@@ -281,12 +281,25 @@ A complete `render.yaml` specification is included for deployment on Render:
 
 ---
 
+## Work Split
+
+Remaining work is divided equally between both collaborators:
+
+| Person A (Amarpai850) | Person B (Partner) |
+| :--- | :--- |
+| Docker and Google Cloud Run deployment (`gcloud run deploy --source .`) | LSA / semantic search tuning (rank/k selection & edge cases) |
+| Live deployed endpoint verification (`/health`, `/api/search`, `/api/graph`, path traversal checks) | Tag boosting for search ranking |
+| Rate-limit checks against the live reverse-proxy environment | Web UI polish (strip YAML frontmatter in the note viewer) |
+| Final deployment walkthrough & teardown verification | Extra sample notes, unit/integration tests, and README improvements |
+
+---
+
 ## Test Suite Summary
 
-The automated test suite contains **59 tests** across 9 test modules:
+The automated test suite contains **62 tests** across 9 test modules:
 
 ```text
-============================= 59 passed in 4.51s =============================
+============================= 62 passed in 9.48s =============================
 - tests/test_tokenizer.py: 8 unit tests (stopwords, plurals, short words, participles, derivational suffixes, tightened -er protection)
 - tests/test_parser.py: 6 unit tests (YAML frontmatter, code stripping, heading removal, title hierarchy, wiki-links, tags)
 - tests/test_scanner.py: 2 unit tests (directory traversal, manifest change diffing)
@@ -295,5 +308,5 @@ The automated test suite contains **59 tests** across 9 test modules:
 - tests/test_graph.py: 7 unit tests (nodes/edges, orphan detection, broken link detection, backlinks, BFS traversal, web export)
 - tests/test_index_incremental.py: 1 integration test (parity between incremental updates and fresh rebuilds)
 - tests/test_cli.py: 11 integration tests (subprocess execution of all subcommands and error handling)
-- tests/test_api.py: 14 integration tests (FastAPI endpoints, input validation, path traversal attempts, XSS inertness, rate limiting, and CLI/API score parity)
+- tests/test_api.py: 17 integration tests (FastAPI endpoints, input validation, path traversal attempts, XSS inertness, CSP SHA-256 verification, spoof-resistant rate limiting, memory eviction, and CLI/API score parity)
 ```
