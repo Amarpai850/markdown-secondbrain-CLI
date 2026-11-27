@@ -49,7 +49,7 @@ def test_cli_help():
 def test_cli_index_command(cli_temp_dir: Path):
     proc = run_brain_cli(["index", str(cli_temp_dir)])
     assert proc.returncode == 0
-    assert "Indexed 18 documents" in proc.stdout
+    assert "Indexed 20 documents" in proc.stdout
     # Verify .brain/index.json created in temp dir, NOT real sample_notes
     assert (cli_temp_dir / ".brain" / "index.json").exists()
 
@@ -81,7 +81,7 @@ def test_cli_graph_stats_command(cli_temp_dir: Path):
     proc = run_brain_cli(["graph", "--stats", "--dir", str(cli_temp_dir)])
     assert proc.returncode == 0
     assert "Knowledge Graph Statistics" in proc.stdout
-    assert "Total Notes (Nodes):      18" in proc.stdout
+    assert "Total Notes (Nodes):      20" in proc.stdout
     assert "isolated-orphan-concept.md" in proc.stdout
     assert "non-existent-architecture" in proc.stdout
 
@@ -123,3 +123,18 @@ def test_cli_error_bad_directory():
     assert proc.returncode != 0
     assert "does not exist." in proc.stderr
     assert "Traceback" not in proc.stderr
+
+
+def test_cli_orphans_command(cli_temp_dir: Path):
+    proc = run_brain_cli(["orphans", "--dir", str(cli_temp_dir)])
+    assert proc.returncode == 0
+    assert "Orphan Notes" in proc.stdout
+    assert "isolated-orphan-concept.md" in proc.stdout
+    # A well-linked note must not be listed as an orphan
+    assert "transformers.md" not in proc.stdout
+
+
+def test_cli_neighbors_direction_flag(cli_temp_dir: Path):
+    proc = run_brain_cli(["neighbors", "transformers", "--depth", "1", "--direction", "in", "--dir", str(cli_temp_dir)])
+    assert proc.returncode == 0
+    assert "attention-mechanisms.md" in proc.stdout

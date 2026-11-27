@@ -119,6 +119,9 @@ brain links transformers --dir sample_notes
 View aggregate graph topology, orphan notes, broken links, and top-connected notes:
 ```bash
 brain graph --stats --dir sample_notes
+
+# Just the orphan notes (no links in or out)
+brain orphans --dir sample_notes
 ```
 
 ### 5. Breadth-First Neighbor Discovery
@@ -143,6 +146,30 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
 ---
 
+## Performance
+
+`scripts/benchmark.py` generates synthetic vaults (fixed seed) and measures a full index build plus the median keyword query latency (top 10 results, including snippet extraction):
+
+```bash
+python scripts/benchmark.py              # 100, 1000, 5000, 10000 notes
+python scripts/benchmark.py 100 2000     # custom sizes
+```
+
+Measured on a Windows laptop with Python 3.12:
+
+| Notes  | Index build | Median query | Max query |
+| -----: | ----------: | -----------: | --------: |
+| 100    | 0.22 s      | 14 ms        | 17 ms     |
+| 1,000  | 1.34 s      | 22 ms        | 27 ms     |
+| 5,000  | 11.6 s      | 74 ms        | 110 ms    |
+| 10,000 | 22.3 s      | 143 ms       | 203 ms    |
+
+The synthetic vault is deliberately pessimistic: it uses a ~70-word vocabulary, so almost every query term appears in almost every note. Real notes with richer vocabularies have far shorter postings lists. Re-indexing after small edits is incremental, so only the full first build pays the cost in the table.
+
+Search ranks all candidates first and only reads files and builds snippets for the top *k*; snippet extraction for every match used to dominate query time (~430 ms at 100 notes before this change).
+
+---
+
 ## TF-IDF Design & Theory
 
 ### 1. Mathematical Formulation
@@ -159,6 +186,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
   $$\mathbf{v}_d = \frac{[w(t_1, d), w(t_2, d), \dots, w(t_m, d)]}{\sqrt{\sum_{k} w(t_k, d)^2}}$$
 - **Cosine Similarity Ranking**:
   $$\text{sim}(\mathbf{q}, \mathbf{d}) = \mathbf{q} \cdot \mathbf{v}_d = \sum_{t \in q \cap d} q_t \cdot v_{d, t}$$
+- **Tag Boosting**: a note whose tags match the query gets its score multiplied by $1 + 0.25 \times \min(m, 2)$, where $m$ is the number of matching tags. Tags are tokenized and stemmed like body text, so `#machine-learning` matches the query "machine learning" and `#transformers` matches "transformer". A multi-word tag counts only if every word is in the query. Because of the boost, final scores can be slightly above 1.0.
 
 ### 2. Incremental Re-Indexing Algorithm
 - File modification times (`mtime`) and file sizes are stored in `<dir>/.brain/index.json`.
@@ -170,6 +198,8 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 - Query vectors are folded into latent semantic space via:
   $$\mathbf{q}_k = \Sigma_k^{-1} U_k^T \mathbf{q}$$
 - Cosine similarity is computed between $\hat{\mathbf{q}}_k$ and latent document vectors $\hat{\mathbf{d}}_j$.
+- **Automatic rank selection**: $k$ is the smallest number of dimensions whose squared singular values explain 80% of the total energy, clamped to $[2, 100]$. Dimensions with numerically zero singular values are never kept, so $\Sigma_k^{-1}$ is always well defined (the 20 sample notes give $k = 13$).
+- **Edge cases**: latent scores at or below 0.01 are treated as noise and dropped; an index with no usable terms (for example, notes containing only stopwords) returns no results instead of an error.
 - SVD matrices are cached in memory and automatically invalidated whenever index changes occur.
 
 ---
@@ -287,26 +317,26 @@ Remaining work is divided equally between both collaborators:
 
 | Person A (Amarpai850) | Person B (Partner) |
 | :--- | :--- |
-| Docker and Google Cloud Run deployment (`gcloud run deploy --source .`) | LSA / semantic search tuning (rank/k selection & edge cases) |
-| Live deployed endpoint verification (`/health`, `/api/search`, `/api/graph`, path traversal checks) | Tag boosting for search ranking |
-| Rate-limit checks against the live reverse-proxy environment | Web UI polish (strip YAML frontmatter in the note viewer) |
-| Final deployment walkthrough & teardown verification | Extra sample notes, unit/integration tests, and README improvements |
+| Docker and Google Cloud Run deployment (`gcloud run deploy --source .`) | ✅ LSA / semantic search tuning (rank/k selection & edge cases) |
+| Live deployed endpoint verification (`/health`, `/api/search`, `/api/graph`, path traversal checks) | ✅ Tag boosting for search ranking |
+| Rate-limit checks against the live reverse-proxy environment | ✅ Web UI polish (strip YAML frontmatter in the note viewer) |
+| Final deployment walkthrough & teardown verification | ✅ Extra sample notes, unit/integration tests, and README improvements |
 
 ---
 
 ## Test Suite Summary
 
-The automated test suite contains **62 tests** across 9 test modules:
+The automated test suite contains **75 tests** across 9 test modules:
 
 ```text
-============================= 62 passed in 9.48s =============================
+============================= 75 passed in 5.86s =============================
 - tests/test_tokenizer.py: 8 unit tests (stopwords, plurals, short words, participles, derivational suffixes, tightened -er protection)
 - tests/test_parser.py: 6 unit tests (YAML frontmatter, code stripping, heading removal, title hierarchy, wiki-links, tags)
 - tests/test_scanner.py: 2 unit tests (directory traversal, manifest change diffing)
 - tests/test_tfidf.py: 4 unit tests (hand-verified mathematical checks for DF, IDF, TF, L2 norms, cosine scores, and 3x boost)
-- tests/test_search.py: 6 unit tests (ranking, tag filtering, snippet density, LSA SVD, cache invalidation, numpy-free keyword search)
-- tests/test_graph.py: 7 unit tests (nodes/edges, orphan detection, broken link detection, backlinks, BFS traversal, web export)
+- tests/test_search.py: 13 unit tests (ranking, tag filtering, tag boosting, top-k-only snippets, snippet density, LSA SVD, LSA rank selection and edge cases, cache invalidation, numpy-free keyword search)
+- tests/test_graph.py: 8 unit tests (nodes/edges, orphan detection, broken link detection, backlinks, BFS traversal and direction, web export)
 - tests/test_index_incremental.py: 1 integration test (parity between incremental updates and fresh rebuilds)
-- tests/test_cli.py: 11 integration tests (subprocess execution of all subcommands and error handling)
-- tests/test_api.py: 17 integration tests (FastAPI endpoints, input validation, path traversal attempts, XSS inertness, CSP SHA-256 verification, spoof-resistant rate limiting, memory eviction, and CLI/API score parity)
+- tests/test_cli.py: 13 integration tests (subprocess execution of all subcommands and error handling)
+- tests/test_api.py: 20 integration tests (FastAPI endpoints, frontmatter-free note bodies, CRLF-safe CSP hashing, input validation, path traversal attempts, XSS inertness, CSP SHA-256 verification, spoof-resistant rate limiting, memory eviction, and CLI/API score parity)
 ```

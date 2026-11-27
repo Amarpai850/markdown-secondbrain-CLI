@@ -21,10 +21,10 @@ def test_incremental_index_equals_fresh_rebuild(tmp_path: Path):
     # 2. Build initial index
     index_inc = Index(temp_dir)
     added_init, mod_init, del_init = index_inc.build(force=True)
-    assert added_init == 18
+    assert added_init == 20
     assert mod_init == 0
     assert del_init == 0
-    assert index_inc.total_docs == 18
+    assert index_inc.total_docs == 20
 
     # 3. Apply mutations:
     # (a) Modify one file: append content with new vocabulary to transformers.md
@@ -54,7 +54,7 @@ def test_incremental_index_equals_fresh_rebuild(tmp_path: Path):
     assert added_cnt == 1
     assert mod_cnt == 1
     assert del_cnt == 1
-    assert index_inc.total_docs == 18  # 18 - 1 + 1 = 18
+    assert index_inc.total_docs == 20  # 20 - 1 + 1 = 20
 
     # 5. Build fresh full index from scratch in a second Index instance
     fresh_dir = tmp_path / "fresh rebuild"

@@ -7,8 +7,8 @@ from brain.scanner import FileMeta, diff_manifests, scan_directory
 def test_scan_sample_notes():
     sample_dir = Path("sample_notes").resolve()
     manifest = scan_directory(sample_dir)
-    # Should discover all 18 sample notes
-    assert len(manifest) == 18
+    # Should discover all 20 sample notes
+    assert len(manifest) == 20
     assert "attention-mechanisms.md" in manifest
     assert "isolated-orphan-concept.md" in manifest
 

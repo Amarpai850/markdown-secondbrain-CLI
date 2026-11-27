@@ -600,7 +600,7 @@
 
         viewerTitle.textContent = doc.title || doc.path;
         viewerPath.textContent = doc.path;
-        viewerContent.textContent = doc.content || "No content.";
+        viewerContent.textContent = (doc.body ?? doc.content) || "No content.";
 
         viewerTags.innerHTML = "";
         if (doc.tags && doc.tags.length > 0) {
@@ -715,6 +715,12 @@
     function resizeCanvas() {
       const rect = graphPane.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
+      // Keep the layout centred when the pane changes size (e.g. Split -> Graph).
+      if (simulation.width && simulation.height) {
+        const shiftX = (rect.width - simulation.width) / 2;
+        const shiftY = (rect.height - simulation.height) / 2;
+        for (const n of simulation.nodes) { n.x += shiftX; n.y += shiftY; }
+      }
       simulation.width = rect.width;
       simulation.height = rect.height;
       graphCanvas.width = rect.width * dpr;
@@ -811,7 +817,7 @@
             const dy = b.y - a.y;
             const distSq = dx * dx + dy * dy + 100;
             const dist = Math.sqrt(distSq);
-            const force = (550 / distSq) * simulation.alpha;
+            const force = (2400 / distSq) * simulation.alpha;
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
 
@@ -827,12 +833,13 @@
           const dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           const targetDist = 70;
+          // Spring: stretched links (dist > targetDist) pull the endpoints together.
           const force = (dist - targetDist) * 0.035 * simulation.alpha;
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
 
-          if (a !== simulation.draggedNode) { a.x -= fx; a.y -= fy; }
-          if (b !== simulation.draggedNode) { b.x += fx; b.y += fy; }
+          if (a !== simulation.draggedNode) { a.x += fx; a.y += fy; }
+          if (b !== simulation.draggedNode) { b.x -= fx; b.y -= fy; }
         }
 
         for (const n of nodes) {

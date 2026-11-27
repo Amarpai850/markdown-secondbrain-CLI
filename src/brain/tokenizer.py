@@ -1,6 +1,7 @@
 """Tokenizer, stopwords filter, and rule-based stemmer built from scratch."""
 
 import re
+from functools import lru_cache
 from typing import Iterable
 
 # Comprehensive standard English stopword list (~140 words)
@@ -35,6 +36,7 @@ def _has_vowel(s: str) -> bool:
     return any(c in _VOWELS for c in s)
 
 
+@lru_cache(maxsize=65536)
 def stem_word(word: str) -> str:
     """Stem an English word using a deterministic rule-based stemmer written from scratch.
 

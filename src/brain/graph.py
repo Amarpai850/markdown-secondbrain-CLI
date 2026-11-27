@@ -137,12 +137,22 @@ class KnowledgeGraph:
         note_query: str,
         depth: int = 1,
         directed: bool = False,
+        direction: str | None = None,
     ) -> dict[str, int]:
         """BFS traversal to find all notes within specified hop distance.
+
+        direction: "both" (default) follows links and backlinks, "out" follows
+        outgoing links only, "in" follows incoming backlinks only. The older
+        ``directed=True`` flag is kept as an alias for direction="out".
 
         Returns:
             dict mapping resolved note path to hop distance (excluding starting note).
         """
+        if direction is None:
+            direction = "out" if directed else "both"
+        if direction not in ("both", "out", "in"):
+            raise ValueError(f"direction must be 'both', 'out' or 'in', got {direction!r}")
+
         start_node = self.resolve_note(note_query)
         if not start_node or depth < 1:
             return {}
@@ -156,8 +166,10 @@ class KnowledgeGraph:
                 continue
 
             # Connected neighbors
-            next_nodes = set(self.out_edges.get(curr, set()))
-            if not directed:
+            next_nodes: set[str] = set()
+            if direction in ("both", "out"):
+                next_nodes |= self.out_edges.get(curr, set())
+            if direction in ("both", "in"):
                 next_nodes |= self.in_edges.get(curr, set())
 
             for nxt in next_nodes:
