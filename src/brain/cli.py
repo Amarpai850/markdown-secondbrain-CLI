@@ -209,6 +209,26 @@ def cmd_graph(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_orphans(args: argparse.Namespace) -> int:
+    """List notes with no incoming or outgoing links."""
+    base_dir = _get_target_dir(args.dir)
+    index = _load_index_or_err(base_dir)
+    graph = KnowledgeGraph(index)
+
+    orphans = sorted(graph.get_orphans())
+    print(f"\n{bold('Orphan Notes')} (no links in or out) in {cyan(str(base_dir))}: "
+          f"{yellow(str(len(orphans)))}\n")
+    if not orphans:
+        print(f"  {dim('Every note is connected.')}\n")
+        return 0
+    for path in orphans:
+        doc = index.docs.get(path)
+        title = doc.title if doc else path
+        print(f"   - {yellow(path)} {dim('(' + title + ')')}")
+    print()
+    return 0
+
+
 def cmd_neighbors(args: argparse.Namespace) -> int:
     """Find neighbor notes within N hops using BFS."""
     base_dir = _get_target_dir(args.dir)
@@ -225,7 +245,7 @@ def cmd_neighbors(args: argparse.Namespace) -> int:
     title = doc.title if doc else canonical_path
 
     depth = max(1, args.depth)
-    neighbors_map = graph.neighbors(note_query, depth=depth)
+    neighbors_map = graph.neighbors(note_query, depth=depth, direction=args.direction)
 
     print(f"\nNeighbors of {bold(title)} ({cyan(canonical_path)}) within depth {depth}:\n")
 
@@ -307,10 +327,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_graph.add_argument("--stats", action="store_true", default=True, help="Show graph topology statistics")
     p_graph.add_argument("--dir", default=None, help="Base notes directory (defaults to cwd)")
 
+    # orphans
+    p_orphans = subparsers.add_parser("orphans", help="List notes with no incoming or outgoing links")
+    p_orphans.add_argument("--dir", default=None, help="Base notes directory (defaults to cwd)")
+
     # neighbors
     p_neighbors = subparsers.add_parser("neighbors", help="Find connected neighbors within N hops using BFS")
     p_neighbors.add_argument("note", help="Starting note filename, stem, or title")
     p_neighbors.add_argument("--depth", type=int, default=2, help="BFS traversal depth (default: 2)")
+    p_neighbors.add_argument(
+        "--direction",
+        choices=["both", "out", "in"],
+        default="both",
+        help="Follow links and backlinks (both), outgoing links (out), or backlinks (in)",
+    )
     p_neighbors.add_argument("--dir", default=None, help="Base notes directory (defaults to cwd)")
 
     # serve
@@ -345,6 +375,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_links(args)
         elif args.command == "graph":
             return cmd_graph(args)
+        elif args.command == "orphans":
+            return cmd_orphans(args)
         elif args.command == "neighbors":
             return cmd_neighbors(args)
         elif args.command == "serve":

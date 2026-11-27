@@ -15,7 +15,7 @@ This file provides shared architectural context, hard constraints, and project s
 - `search.py` — Cosine similarity ranking over L2-normalized TF-IDF vectors, tag filtering, densest ~150-char snippet extraction with match offsets, and optional LSA semantic search (`q_k = Sigma^-1 U^T q` with SVD cache invalidated on index change).
 - `graph.py` — Directed knowledge graph tracking outlinks, backlinks, orphans, broken links, degree centrality, and BFS `neighbors(note, depth, direction="both"|"out"|"in")`.
 - `highlight.py` — Terminal ANSI keyword highlighting with Windows Virtual Terminal Processing, `NO_COLOR` support, and automatic TTY detection.
-- `cli.py` — `argparse` CLI (`index`, `search`, `links`, `graph --stats`, `neighbors`, `serve`) with UTF-8 console output and user-friendly errors.
+- `cli.py` — `argparse` CLI (`index`, `search`, `links`, `graph --stats`, `orphans`, `neighbors --direction`, `serve`) with UTF-8 console output and user-friendly errors.
 - `api.py` — FastAPI app loading the index read-only at startup via lifespan; serves `/`, `/health`, `/api/search`, `/api/note/{name}`, `/api/graph`; enforces path traversal protection (index-only lookup), SHA-256 inline-script CSP, and sliding-window rate limiting.
 
 ## Hard Rules
@@ -42,7 +42,7 @@ pytest tests/test_api.py -v
 - **Phase 1–3 (Core & CLI):** Scanner, parser, from-scratch tokenizer/stemmer, inverted index with incremental updates, TF-IDF + optional LSA search, directed knowledge graph, ANSI highlighter, and full CLI (`index`, `search`, `links`, `graph`, `neighbors`, `serve`).
 - **Phase 4 (Web & Security):** FastAPI read-only wrapper + single-file dark UI (`web/index.html`) with force-directed `<canvas>` graph, SHA-256 CSP header, XSS-safe DOM rendering, path-traversal protection, and X-Forwarded-For-hardened rate limiter with bounded memory.
 - **Phase 5 (Packaging & Docs):** Multi-stage `Dockerfile` (Python 3.11 test gate + non-root runtime), `.dockerignore`, `render.yaml`, `README.md`, `CONTRIBUTING.md`, and `AGENTS.md`.
-- **Tests:** 70 tests passing across 9 test modules (`pytest -v`).
+- **Tests:** 75 tests passing across 9 test modules (`pytest -v`).
 
 ### Remaining
 - **Deployment & Live Verification (Person A):** Build/deploy to Cloud Run (`gcloud run deploy --source .`), verify live `/health`, `/api/search`, `/api/graph`, traversal 404s, and rate-limit behavior.

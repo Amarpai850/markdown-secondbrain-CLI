@@ -119,6 +119,9 @@ brain links transformers --dir sample_notes
 View aggregate graph topology, orphan notes, broken links, and top-connected notes:
 ```bash
 brain graph --stats --dir sample_notes
+
+# Just the orphan notes (no links in or out)
+brain orphans --dir sample_notes
 ```
 
 ### 5. Breadth-First Neighbor Discovery
@@ -140,6 +143,30 @@ Launch the FastAPI web application serving the single-page interface:
 brain serve --host 127.0.0.1 --port 8000 --dir sample_notes
 ```
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+
+---
+
+## Performance
+
+`scripts/benchmark.py` generates synthetic vaults (fixed seed) and measures a full index build plus the median keyword query latency (top 10 results, including snippet extraction):
+
+```bash
+python scripts/benchmark.py              # 100, 1000, 5000, 10000 notes
+python scripts/benchmark.py 100 2000     # custom sizes
+```
+
+Measured on a Windows laptop with Python 3.12:
+
+| Notes  | Index build | Median query | Max query |
+| -----: | ----------: | -----------: | --------: |
+| 100    | 0.22 s      | 14 ms        | 17 ms     |
+| 1,000  | 1.34 s      | 22 ms        | 27 ms     |
+| 5,000  | 11.6 s      | 74 ms        | 110 ms    |
+| 10,000 | 22.3 s      | 143 ms       | 203 ms    |
+
+The synthetic vault is deliberately pessimistic: it uses a ~70-word vocabulary, so almost every query term appears in almost every note. Real notes with richer vocabularies have far shorter postings lists. Re-indexing after small edits is incremental, so only the full first build pays the cost in the table.
+
+Search ranks all candidates first and only reads files and builds snippets for the top *k*; snippet extraction for every match used to dominate query time (~430 ms at 100 notes before this change).
 
 ---
 
@@ -299,17 +326,17 @@ Remaining work is divided equally between both collaborators:
 
 ## Test Suite Summary
 
-The automated test suite contains **70 tests** across 9 test modules:
+The automated test suite contains **75 tests** across 9 test modules:
 
 ```text
-============================= 70 passed in 5.72s =============================
+============================= 75 passed in 5.86s =============================
 - tests/test_tokenizer.py: 8 unit tests (stopwords, plurals, short words, participles, derivational suffixes, tightened -er protection)
 - tests/test_parser.py: 6 unit tests (YAML frontmatter, code stripping, heading removal, title hierarchy, wiki-links, tags)
 - tests/test_scanner.py: 2 unit tests (directory traversal, manifest change diffing)
 - tests/test_tfidf.py: 4 unit tests (hand-verified mathematical checks for DF, IDF, TF, L2 norms, cosine scores, and 3x boost)
-- tests/test_search.py: 12 unit tests (ranking, tag filtering, tag boosting, snippet density, LSA SVD, LSA rank selection and edge cases, cache invalidation, numpy-free keyword search)
-- tests/test_graph.py: 7 unit tests (nodes/edges, orphan detection, broken link detection, backlinks, BFS traversal, web export)
+- tests/test_search.py: 13 unit tests (ranking, tag filtering, tag boosting, top-k-only snippets, snippet density, LSA SVD, LSA rank selection and edge cases, cache invalidation, numpy-free keyword search)
+- tests/test_graph.py: 8 unit tests (nodes/edges, orphan detection, broken link detection, backlinks, BFS traversal and direction, web export)
 - tests/test_index_incremental.py: 1 integration test (parity between incremental updates and fresh rebuilds)
-- tests/test_cli.py: 11 integration tests (subprocess execution of all subcommands and error handling)
-- tests/test_api.py: 19 integration tests (FastAPI endpoints, frontmatter-free note bodies, input validation, path traversal attempts, XSS inertness, CSP SHA-256 verification, spoof-resistant rate limiting, memory eviction, and CLI/API score parity)
+- tests/test_cli.py: 13 integration tests (subprocess execution of all subcommands and error handling)
+- tests/test_api.py: 20 integration tests (FastAPI endpoints, frontmatter-free note bodies, CRLF-safe CSP hashing, input validation, path traversal attempts, XSS inertness, CSP SHA-256 verification, spoof-resistant rate limiting, memory eviction, and CLI/API score parity)
 ```

@@ -239,7 +239,7 @@ class SearchEngine:
         # Filter by tag if requested
         tag_lower = tag.lower().lstrip("#") if tag else None
 
-        results: list[SearchResult] = []
+        candidates: list[tuple[str, float, IndexedDoc]] = []
         for doc_path, score in scores.items():
             if score <= 0.0:
                 continue
@@ -248,8 +248,28 @@ class SearchEngine:
                 continue
             if tag_lower and tag_lower not in [t.lower() for t in doc.tags]:
                 continue
+            candidates.append((doc_path, score * tag_boost_factor(doc.tags, query_stems_set), doc))
 
-            # Load document content for snippet extraction
+        return self._top_k_with_snippets(candidates, k, query_stems_set, raw_query_words)
+
+    def _top_k_with_snippets(
+        self,
+        candidates: list[tuple[str, float, IndexedDoc]],
+        k: int,
+        query_stems: set[str],
+        raw_query_words: set[str],
+    ) -> list[SearchResult]:
+        """Rank candidates, then read files and build snippets only for the top k.
+
+        Snippets never affect ranking, so extracting them for every match (as
+        earlier versions did) wasted disk reads and stemming on results that
+        were thrown away by the final [:k] slice.
+        """
+        # Sort by score desc, then by path asc for deterministic tie-breaking
+        candidates.sort(key=lambda c: (-c[1], c[0]))
+
+        results: list[SearchResult] = []
+        for doc_path, score, doc in candidates[:k]:
             full_file = self.index.base_dir / doc_path
             content = ""
             if full_file.exists():
@@ -260,24 +280,20 @@ class SearchEngine:
 
             snippet, highlights = extract_snippet(
                 content=content,
-                query_stems=query_stems_set,
+                query_stems=query_stems,
                 raw_query_words=raw_query_words,
             )
-
             results.append(
                 SearchResult(
                     path=doc_path,
                     title=doc.title,
-                    score=score * tag_boost_factor(doc.tags, query_stems_set),
+                    score=score,
                     snippet=snippet,
                     tags=doc.tags,
                     highlights=highlights,
                 )
             )
-
-        # Sort by score desc, then by path asc for deterministic tie-breaking
-        results.sort(key=lambda r: (-r.score, r.path))
-        return results[:k]
+        return results
 
     def _get_lsa_matrices(self) -> tuple[Any, Any, Any, list[str], list[str]]:
         """Compute or retrieve cached SVD matrices for Latent Semantic Analysis.
@@ -392,7 +408,7 @@ class SearchEngine:
         query_stems_set = set(query_stems_list)
         tag_lower = tag.lower().lstrip("#") if tag else None
 
-        results: list[SearchResult] = []
+        candidates: list[tuple[str, float, IndexedDoc]] = []
         for j, score in enumerate(scores_arr):
             score_val = float(score)
             if score_val <= MIN_SEMANTIC_SCORE:
@@ -403,34 +419,9 @@ class SearchEngine:
                 continue
             if tag_lower and tag_lower not in [t.lower() for t in doc.tags]:
                 continue
+            candidates.append((doc_path, score_val * tag_boost_factor(doc.tags, query_stems_set), doc))
 
-            full_file = self.index.base_dir / doc_path
-            content = ""
-            if full_file.exists():
-                try:
-                    content = full_file.read_text(encoding="utf-8")
-                except Exception:
-                    content = ""
-
-            snippet, highlights = extract_snippet(
-                content=content,
-                query_stems=query_stems_set,
-                raw_query_words=raw_query_words,
-            )
-
-            results.append(
-                SearchResult(
-                    path=doc_path,
-                    title=doc.title,
-                    score=score_val * tag_boost_factor(doc.tags, query_stems_set),
-                    snippet=snippet,
-                    tags=doc.tags,
-                    highlights=highlights,
-                )
-            )
-
-        results.sort(key=lambda r: (-r.score, r.path))
-        return results[:k]
+        return self._top_k_with_snippets(candidates, k, query_stems_set, raw_query_words)
 
     def search(
         self,

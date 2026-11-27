@@ -75,3 +75,14 @@ def test_to_network_data_structure(sample_graph: KnowledgeGraph):
     assert "id" in net_data["nodes"][0]
     assert "title" in net_data["nodes"][0]
     assert "degree" in net_data["nodes"][0]
+
+
+def test_bfs_direction(sample_graph: KnowledgeGraph):
+    out_only = sample_graph.neighbors("transformers", depth=1, direction="out")
+    in_only = sample_graph.neighbors("transformers", depth=1, direction="in")
+    both = sample_graph.neighbors("transformers", depth=1, direction="both")
+    assert set(out_only) == set(sample_graph.get_outlinks("transformers"))
+    assert set(in_only) == set(sample_graph.get_backlinks("transformers"))
+    assert set(both) == set(out_only) | set(in_only)
+    # Legacy flag still means outgoing-only
+    assert sample_graph.neighbors("transformers", depth=1, directed=True) == out_only

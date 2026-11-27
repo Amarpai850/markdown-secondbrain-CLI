@@ -123,3 +123,18 @@ def test_cli_error_bad_directory():
     assert proc.returncode != 0
     assert "does not exist." in proc.stderr
     assert "Traceback" not in proc.stderr
+
+
+def test_cli_orphans_command(cli_temp_dir: Path):
+    proc = run_brain_cli(["orphans", "--dir", str(cli_temp_dir)])
+    assert proc.returncode == 0
+    assert "Orphan Notes" in proc.stdout
+    assert "isolated-orphan-concept.md" in proc.stdout
+    # A well-linked note must not be listed as an orphan
+    assert "transformers.md" not in proc.stdout
+
+
+def test_cli_neighbors_direction_flag(cli_temp_dir: Path):
+    proc = run_brain_cli(["neighbors", "transformers", "--depth", "1", "--direction", "in", "--dir", str(cli_temp_dir)])
+    assert proc.returncode == 0
+    assert "attention-mechanisms.md" in proc.stdout

@@ -173,3 +173,24 @@ def test_semantic_search_drops_noise_scores(sample_engine: SearchEngine):
     results = sample_engine.search("neural representations", k=50, semantic=True)
     assert results
     assert all(r.score > MIN_SEMANTIC_SCORE for r in results)
+
+
+def test_snippets_built_only_for_top_k(sample_engine: SearchEngine, monkeypatch: pytest.MonkeyPatch):
+    """Ranking happens before snippet extraction, so only k snippets are built."""
+    import brain.search as search_mod
+
+    full = sample_engine.search("learning", k=50)
+    assert len(full) > 3
+
+    calls = {"n": 0}
+    real = search_mod.extract_snippet
+
+    def counting(*args, **kwargs):
+        calls["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(search_mod, "extract_snippet", counting)
+    top = sample_engine.search("learning", k=3)
+    assert calls["n"] == 3
+    # Same ranking and scores as the unrestricted search
+    assert [(r.path, r.score) for r in top] == [(r.path, r.score) for r in full[:3]]
