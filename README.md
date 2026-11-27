@@ -293,21 +293,19 @@ gcloud run deploy brain `
 
 ### Option 2: Render (Free Tier Alternative)
 
-A complete `render.yaml` specification is included for deployment on Render:
+`render.yaml` is a Render Blueprint: it defines the service (Docker runtime, free plan, Singapore region, `/health` health check, env vars) so nothing has to be configured by hand.
 
-1. Push your repository to GitHub:
-   ```bash
-   git remote add origin https://github.com/<your-username>/brain.git
-   git push -u origin master
-   ```
-2. Log into [dashboard.render.com](https://dashboard.render.com/).
-3. Click **New +** > **Web Service** > Connect your GitHub repository.
-4. Select **Docker** environment and **Free** instance type.
-5. Set Environment Variables:
-   - `PORT`: `10000`
-   - `BRAIN_NOTES_DIR`: `/app/sample_notes`
-   - `BRAIN_WEB_DIR`: `/app/web`
-6. Click **Deploy Web Service**. Render builds the multi-stage Dockerfile and provides a public `https://<service-name>.onrender.com` URL.
+1. Log into [dashboard.render.com](https://dashboard.render.com/) with GitHub.
+2. Click **New +** > **Blueprint** and select this repository (`main` branch).
+3. Render reads `render.yaml` and shows the `brain-search-engine` service. Click **Apply**.
+4. Render builds the multi-stage Dockerfile. The build **fails if any test fails** (Stage 1), so a red build usually means a failing test: open the build log and search for `FAILED`.
+5. When the deploy turns green, the app is live at `https://brain-search-engine.onrender.com` (or a similar URL shown on the service page).
+
+Every push to `main` redeploys automatically (`autoDeploy: true`).
+
+**Free tier notes:**
+- The service sleeps after ~15 minutes without traffic; the first request afterwards takes up to a minute while it wakes up. Open the site a minute or two before a demo.
+- Only `sample_notes/` is baked into the image (see `.dockerignore`); the index is built at image build time and loaded read-only.
 
 ---
 
