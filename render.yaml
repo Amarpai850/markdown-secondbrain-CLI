@@ -1,10 +1,16 @@
 services:
   - type: web
     name: brain-search-engine
-    env: docker
-    dockerfilePath: Dockerfile
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
-    region: oregon
+    # Singapore is the closest Render region to India (lower latency for demos).
+    region: singapore
+    branch: main
+    autoDeploy: true
+    # Render marks a deploy healthy only once this returns HTTP 200.
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 10000
