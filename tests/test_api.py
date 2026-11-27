@@ -253,6 +253,9 @@ def test_csp_hash_matches_served_html_bytes(client: TestClient):
     assert end_pos != -1, "No </script> tag found in served HTML"
 
     script_bytes = html_bytes[start_pos + len(start_tag):end_pos]
+    # Browsers hash the script after normalizing line endings to LF, so the
+    # CSP token must match the normalized bytes (not raw CRLF bytes on Windows).
+    script_bytes = script_bytes.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     digest = hashlib.sha256(script_bytes).digest()
     b64_digest = base64.b64encode(digest).decode("ascii")
     expected_token = f"'sha256-{b64_digest}'"
@@ -316,3 +319,36 @@ def test_rate_limiter_memory_eviction():
     assert len(middleware.ip_timestamps) <= middleware.max_tracked_ips
 
 
+
+
+def test_note_body_strips_frontmatter(client: TestClient):
+    """The viewer gets a body without the YAML block; raw content is unchanged."""
+    resp = client.get("/api/note/spaced-repetition")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["content"].startswith("---")
+    assert "tags:" in data["content"]
+    assert not data["body"].startswith("---")
+    assert "tags: [" not in data["body"]
+    assert data["body"].startswith("# Spaced Repetition")
+
+
+def test_note_body_without_frontmatter_is_unchanged(client: TestClient, api_test_dir: Path):
+    resp = client.get("/api/note/isolated-orphan-concept")
+    assert resp.status_code == 200
+    data = resp.json()
+    raw = (api_test_dir / "isolated-orphan-concept.md").read_text(encoding="utf-8")
+    if not raw.lstrip().startswith("---"):
+        assert data["body"] == raw.lstrip("\r\n")
+
+
+def test_csp_hash_ignores_line_endings(tmp_path: Path):
+    """CRLF (Windows checkout) and LF versions of the page must give the same CSP hash."""
+    from brain.api import compute_inline_script_sha256
+
+    script = "\n  const x = 1;\n  console.log(x);\n"
+    lf = tmp_path / "lf.html"
+    crlf = tmp_path / "crlf.html"
+    lf.write_bytes(f"<html><script>{script}</script></html>".encode())
+    crlf.write_bytes(f"<html><script>{script}</script></html>".replace("\n", "\r\n").encode())
+    assert compute_inline_script_sha256(lf) == compute_inline_script_sha256(crlf) != ""

@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from brain.graph import KnowledgeGraph
 from brain.index import Index
+from brain.parser import parse_frontmatter
 from brain.search import SearchEngine
 
 
@@ -53,6 +54,10 @@ def compute_inline_script_sha256(html_path: Path) -> str:
         end_idx = raw.find(end_tag, start_idx)
         if start_idx != -1 and end_idx != -1:
             script_bytes = raw[start_idx + len(start_tag):end_idx]
+            # Browsers normalize CRLF and lone CR to LF before hashing inline scripts
+            # (HTML input stream preprocessing). Do the same, or a Windows checkout
+            # with CRLF line endings produces a hash that blocks the whole UI script.
+            script_bytes = script_bytes.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
             digest = hashlib.sha256(script_bytes).digest()
             b64 = base64.b64encode(digest).decode("ascii")
             return f"'sha256-{b64}'"
@@ -299,6 +304,10 @@ def create_app(notes_dir: Path | str | None = None) -> FastAPI:
         outlinks = graph.get_outlinks(canonical_key)
         backlinks = graph.get_backlinks(canonical_key)
 
+        # Display body: the note without its YAML frontmatter block.
+        # "content" stays raw for API compatibility.
+        _, body = parse_frontmatter(content)
+
         return {
             "path": rel_path,
             "title": doc.title,
@@ -308,6 +317,7 @@ def create_app(notes_dir: Path | str | None = None) -> FastAPI:
             "outlinks": outlinks,
             "backlinks": backlinks,
             "content": content,
+            "body": body.lstrip("\r\n"),
         }
 
     @app.get("/api/graph")

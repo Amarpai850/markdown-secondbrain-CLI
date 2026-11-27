@@ -17,7 +17,7 @@ def sample_graph() -> KnowledgeGraph:
 
 def test_graph_node_and_edge_counts(sample_graph: KnowledgeGraph):
     stats = sample_graph.get_stats()
-    assert stats.node_count == 18
+    assert stats.node_count == 20
     assert stats.edge_count >= 30
 
 
@@ -70,7 +70,7 @@ def test_to_network_data_structure(sample_graph: KnowledgeGraph):
     net_data = sample_graph.to_network_data()
     assert "nodes" in net_data
     assert "edges" in net_data
-    assert len(net_data["nodes"]) == 18
+    assert len(net_data["nodes"]) == 20
     assert len(net_data["edges"]) >= 30
     assert "id" in net_data["nodes"][0]
     assert "title" in net_data["nodes"][0]

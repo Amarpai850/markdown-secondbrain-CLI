@@ -120,6 +120,70 @@ def extract_snippet(
     return full_snippet, highlights
 
 
+# LSA rank selection: keep enough latent dimensions to explain LSA_ENERGY of the
+# squared singular-value mass, within [LSA_MIN_RANK, LSA_MAX_RANK].
+LSA_ENERGY = 0.80
+LSA_MIN_RANK = 2
+LSA_MAX_RANK = 100
+SINGULAR_EPS = 1e-9
+# Latent-space cosine scores at or below this are treated as noise and dropped.
+MIN_SEMANTIC_SCORE = 0.01
+
+
+def choose_lsa_rank(singular_values: Any) -> int:
+    """Pick the LSA rank k from singular values (sorted descending).
+
+    Dimensions with numerically zero singular values are never kept, so
+    Sigma^-1 is always well defined. Among the rest, keep the smallest k that
+    explains LSA_ENERGY of the total energy, clamped to [LSA_MIN_RANK, LSA_MAX_RANK].
+    """
+    positive = [float(v) for v in singular_values if float(v) > SINGULAR_EPS]
+    rank = len(positive)
+    if rank == 0:
+        return 0
+
+    total = sum(v * v for v in positive)
+    running = 0.0
+    k = rank
+    for i, v in enumerate(positive, start=1):
+        running += v * v
+        if running / total >= LSA_ENERGY:
+            k = i
+            break
+
+    k = max(k, LSA_MIN_RANK)
+    k = min(k, LSA_MAX_RANK, rank)
+    return k
+
+
+# Tag boosting: each tag that the query matches multiplies the score by (1 + TAG_BOOST),
+# counting at most MAX_BOOSTED_TAGS tags so heavily tagged notes cannot dominate.
+TAG_BOOST = 0.25
+MAX_BOOSTED_TAGS = 2
+
+
+def count_matching_tags(tags: list[str], query_stems: set[str]) -> int:
+    """Count tags whose every token appears in the query.
+
+    Tags are tokenized like body text, so "#machine-learning" matches the query
+    "machine learning" and "#transformers" matches "transformer".
+    """
+    if not query_stems:
+        return 0
+    matched = 0
+    for tag in tags:
+        tag_stems = set(tokenize(tag.replace("-", " ").replace("_", " "), stem=True))
+        if tag_stems and tag_stems <= query_stems:
+            matched += 1
+    return matched
+
+
+def tag_boost_factor(tags: list[str], query_stems: set[str]) -> float:
+    """Multiplicative ranking boost for notes whose tags match the query."""
+    matched = min(count_matching_tags(tags, query_stems), MAX_BOOSTED_TAGS)
+    return 1.0 + TAG_BOOST * matched
+
+
 class SearchEngine:
     """Ranked search engine supporting TF-IDF cosine similarity and optional LSA."""
 
@@ -204,7 +268,7 @@ class SearchEngine:
                 SearchResult(
                     path=doc_path,
                     title=doc.title,
-                    score=score,
+                    score=score * tag_boost_factor(doc.tags, query_stems_set),
                     snippet=snippet,
                     tags=doc.tags,
                     highlights=highlights,
@@ -255,12 +319,13 @@ class SearchEngine:
 
         # SVD: A = U * Sigma * V^T
         U, s, Vt = np.linalg.svd(A, full_matrices=False)
-        k = min(15, m, n)
+        k = choose_lsa_rank(s)
+        if k == 0:
+            raise ValueError("Index has no non-zero term weights for semantic search")
 
         Uk = U[:, :k]  # (m, k)
-        sk = s[:k]  # (k,)
-        # Filter near-zero singular values for numerical stability
-        inv_sk = np.where(sk > 1e-9, 1.0 / sk, 0.0)
+        sk = s[:k]  # (k,) -- all strictly positive by construction of choose_lsa_rank
+        inv_sk = 1.0 / sk
 
         # Document representations in latent space: columns of Vt[:k, :]
         doc_vectors_k = Vt[:k, :]  # (k, n)
@@ -294,7 +359,11 @@ class SearchEngine:
         if not query.strip() or self.index.total_docs == 0:
             return []
 
-        Uk, inv_sk, doc_vectors_k, vocab, doc_paths = self._get_lsa_matrices()
+        try:
+            Uk, inv_sk, doc_vectors_k, vocab, doc_paths = self._get_lsa_matrices()
+        except ValueError:
+            # Degenerate index (e.g. every note is only stopwords): nothing to rank.
+            return []
         vocab_index = {term: i for i, term in enumerate(vocab)}
 
         query_stems_list = tokenize(query, stem=True)
@@ -326,7 +395,7 @@ class SearchEngine:
         results: list[SearchResult] = []
         for j, score in enumerate(scores_arr):
             score_val = float(score)
-            if score_val <= 0.0:
+            if score_val <= MIN_SEMANTIC_SCORE:
                 continue
             doc_path = doc_paths[j]
             doc = self.index.docs.get(doc_path)
@@ -353,7 +422,7 @@ class SearchEngine:
                 SearchResult(
                     path=doc_path,
                     title=doc.title,
-                    score=score_val,
+                    score=score_val * tag_boost_factor(doc.tags, query_stems_set),
                     snippet=snippet,
                     tags=doc.tags,
                     highlights=highlights,
