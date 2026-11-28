@@ -3,132 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brain — Second Brain & Knowledge Graph</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Brain — Search your notes</title>
   <style>
+    /* ---------- Tokens: one accent, 4-point spacing, one radius scale ---------- */
     :root {
-      --bg: #0b0f19;
-      --surface: #111827;
-      --surface-hover: #1f293d;
-      --border: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --cyan: #38bdf8;
-      --cyan-glow: rgba(56, 189, 248, 0.25);
-      --amber: #f59e0b;
-      --rose: #f43f5e;
-      --emerald: #10b981;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --code-font: "JetBrains Mono", Consolas, monospace;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f5;
+      --border: #dfe3e9;
+      --border-strong: #c9cfd8;
+      --text: #12161c;
+      --text-2: #48515e;
+      --text-3: #677180;
+      --accent: #0d7f58;
+      --accent-hover: #0a6b4a;
+      --accent-soft: rgba(13, 127, 88, 0.10);
+      --accent-mark: rgba(13, 127, 88, 0.16);
+      --danger: #c2332b;
+      --glass: rgba(255, 255, 255, 0.72);
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.08);
+
+      --graph-bg: #fbfcfd;
+      --graph-node: #8b95a3;
+      --graph-edge: rgba(72, 81, 94, 0.22);
+      --graph-label: #48515e;
+
+      --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;
+      --r-sm: 6px; --r: 8px; --r-lg: 12px;
+
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace;
+      --ease: cubic-bezier(0.2, 0, 0, 1);
     }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1116;
+        --surface: #151920;
+        --surface-2: #1b2029;
+        --border: #262c36;
+        --border-strong: #353d4a;
+        --text: #e9ecf1;
+        --text-2: #a7b0bd;
+        --text-3: #8690a0;
+        --accent: #3dbd8f;
+        --accent-hover: #5bcfa4;
+        --accent-soft: rgba(61, 189, 143, 0.12);
+        --accent-mark: rgba(61, 189, 143, 0.22);
+        --danger: #f07167;
+        --glass: rgba(21, 25, 32, 0.72);
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
+
+        --graph-bg: #0b0e12;
+        --graph-node: #5d6776;
+        --graph-edge: rgba(167, 176, 189, 0.16);
+        --graph-label: #a7b0bd;
+      }
+    }
+
+    /* ---------- Base ---------- */
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
     body {
-      background-color: var(--bg);
+      background: var(--bg);
       color: var(--text);
       font-family: var(--font);
-      height: 100vh;
-      overflow: hidden;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
+    button { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    kbd {
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1;
+      color: var(--text-3);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 3px 6px;
+    }
+
+    /* ---------- Header ---------- */
     header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
+      gap: var(--s4);
+      padding: var(--s3) var(--s5);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       z-index: 10;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 1.15rem;
-      color: var(--text);
+      gap: var(--s2);
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
     }
-    .brand-badge {
-      background: linear-gradient(135deg, #0284c7, #38bdf8);
-      color: #0b0f19;
-      font-size: 0.7rem;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 999px;
-      text-transform: uppercase;
-    }
-    .search-wrapper {
-      flex: 1;
-      max-width: 580px;
-      position: relative;
+    .brand svg { color: var(--accent); flex-shrink: 0; }
+
+    .search-wrapper { flex: 1; max-width: 640px; position: relative; }
+    .search-icon {
+      position: absolute; left: var(--s3); top: 50%; transform: translateY(-50%);
+      color: var(--text-3); pointer-events: none;
     }
     .search-input {
       width: 100%;
-      background: #060911;
+      height: 40px;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 14px 9px 36px;
+      border-radius: var(--r);
+      padding: 0 var(--s10) 0 var(--s10);
       color: var(--text);
-      font-size: 0.95rem;
+      font-size: 15px;
       outline: none;
-      transition: all 0.2s ease;
+      transition: border-color 150ms var(--ease), background-color 150ms var(--ease), box-shadow 150ms var(--ease);
     }
+    .search-input::placeholder { color: var(--text-3); }
+    .search-input:hover { border-color: var(--border-strong); }
     .search-input:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 2px var(--cyan-glow);
+      background: var(--surface);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
-    .search-icon {
-      position: absolute;
-      left: 11px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-      pointer-events: none;
-    }
-    .controls {
+    .search-kbd { position: absolute; right: var(--s3); top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .search-input:focus ~ .search-kbd { opacity: 0; }
+
+    .controls { display: flex; align-items: center; gap: var(--s3); margin-left: auto; }
+    .segmented {
       display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .toggle-group, .view-tabs {
-      display: flex;
-      background: #060911;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: var(--r);
       padding: 2px;
+      gap: 2px;
     }
     .toggle-btn, .view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s1);
+      height: 32px;
+      padding: 0 var(--s3);
       background: transparent;
       border: none;
-      color: var(--text-muted);
-      padding: 5px 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      border-radius: 4px;
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      font-size: 13px;
+      font-weight: 550;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
     }
-    .toggle-btn.active {
-      background: var(--surface-hover);
-      color: var(--cyan);
-    }
-    .toggle-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-    .view-btn.active {
-      background: #1e293b;
+    .toggle-btn:hover, .view-btn:hover { color: var(--text); background: var(--surface); }
+    .toggle-btn.active, .view-btn.active {
+      background: var(--surface);
       color: var(--text);
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
     }
-    main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-      position: relative;
-    }
+    .toggle-btn.active { color: var(--accent); }
+    .toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---------- Layout ---------- */
+    main { flex: 1; display: flex; overflow: hidden; position: relative; }
     #searchPane {
-      width: 440px;
+      width: 420px;
       background: var(--bg);
       border-right: 1px solid var(--border);
       display: flex;
@@ -136,288 +186,316 @@
       flex-shrink: 0;
     }
     .pane-header {
-      padding: 10px 16px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.8rem;
-      color: var(--text-muted);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      height: 40px;
+      padding: 0 var(--s4);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-3);
     }
+    #statusIndicator { display: inline-flex; align-items: center; gap: 6px; }
+    #statusIndicator::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    }
+    #statusIndicator[data-state="busy"]::before { background: var(--text-3); }
+    #statusIndicator[data-state="error"] { color: var(--danger); }
+    #statusIndicator[data-state="error"]::before { background: var(--danger); }
+
     .results-list {
       flex: 1;
       overflow-y: auto;
-      padding: 12px;
+      padding: var(--s3);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: var(--s2);
     }
+
+    /* ---------- Result cards: title → where → why it matched ---------- */
     .result-card {
+      display: block;
+      width: 100%;
+      text-align: left;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: var(--r-lg);
+      padding: var(--s3) var(--s4);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), transform 150ms var(--ease);
     }
-    .result-card:hover {
-      background: var(--surface-hover);
-      border-color: var(--cyan);
-    }
-    .result-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 6px;
-      gap: 8px;
-    }
+    .result-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
+    .result-card:active { transform: scale(0.995); }
+    .result-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .result-top { display: flex; align-items: center; gap: var(--s3); }
     .result-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-      line-height: 1.3;
-    }
-    .score-badge {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--cyan);
-      font-family: var(--code-font);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      flex-shrink: 0;
-    }
-    .result-meta {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .tag-chip {
-      background: #1e293b;
-      color: #cbd5e1;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-    }
-    .snippet-text {
-      font-size: 0.82rem;
-      color: #94a3b8;
-      line-height: 1.45;
-    }
-    .snippet-text mark {
-      background: rgba(245, 158, 11, 0.25);
-      color: #fde68a;
-      font-weight: 600;
-      padding: 0 2px;
-      border-radius: 2px;
-    }
-    #graphPane {
       flex: 1;
-      position: relative;
-      background: #070a12;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--text);
+    }
+    .relevance {
+      flex-shrink: 0;
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--surface-2);
       overflow: hidden;
     }
-    #graphCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      cursor: grab;
+    .relevance > span { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+    .result-path {
+      margin-top: 2px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-3);
     }
-    #graphCanvas:active {
-      cursor: grabbing;
+    .snippet-text {
+      margin-top: var(--s2);
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-2);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
+    .snippet-text mark {
+      background: var(--accent-mark);
+      color: var(--text);
+      font-weight: 600;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+    .result-tags { margin-top: var(--s2); display: flex; flex-wrap: wrap; gap: var(--s1); }
+    .tag-chip {
+      font-size: 12px;
+      color: var(--text-3);
+      background: var(--surface-2);
+      padding: 1px var(--s2);
+      border-radius: var(--r-sm);
+    }
+
+    /* ---------- Empty / welcome state ---------- */
+    .empty-state { padding: var(--s8) var(--s4); color: var(--text-2); }
+    .empty-state h2 {
+      font-size: 18px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: var(--s2);
+    }
+    .empty-state p { font-size: 14px; line-height: 1.6; max-width: 36ch; }
+    .empty-state.error { color: var(--danger); }
+    .suggestions { margin-top: var(--s5); display: flex; flex-wrap: wrap; gap: var(--s2); }
+    .suggestion {
+      height: 32px;
+      padding: 0 var(--s3);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease), color 150ms var(--ease);
+    }
+    .suggestion:hover { border-color: var(--accent); color: var(--accent); }
+    .hint { margin-top: var(--s6); font-size: 12px; color: var(--text-3); display: flex; flex-wrap: wrap; gap: var(--s4); }
+    .hint span { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* ---------- Graph ---------- */
+    #graphPane { flex: 1; position: relative; background: var(--graph-bg); overflow: hidden; }
+    #graphCanvas { width: 100%; height: 100%; display: block; cursor: grab; }
+    #graphCanvas:active { cursor: grabbing; }
+    /* The one glass surface: it floats over a moving canvas. */
     .graph-legend {
       position: absolute;
-      bottom: 16px;
-      right: 16px;
-      background: rgba(17, 24, 39, 0.85);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.75rem;
-      color: var(--text-muted);
+      left: var(--s4);
+      bottom: var(--s4);
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      gap: var(--s4);
+      padding: var(--s2) var(--s3);
+      background: var(--glass);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 12px;
+      color: var(--text-2);
       pointer-events: none;
     }
-    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .legend-dot.note { background: var(--graph-node); }
+    .legend-dot.hub { background: var(--accent); }
+    .legend-dot.orphan { border: 2px solid var(--text-3); }
+    .graph-hint {
+      position: absolute; right: var(--s4); bottom: var(--s4);
+      font-size: 12px; color: var(--text-3); pointer-events: none;
+    }
+
+    /* ---------- Note viewer ---------- */
     #noteViewer {
       position: absolute;
-      top: 0;
-      right: 0;
-      width: 520px;
+      top: 0; right: 0;
+      width: min(560px, 100%);
       height: 100%;
       background: var(--surface);
       border-left: 1px solid var(--border);
+      box-shadow: var(--shadow);
       z-index: 20;
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+      visibility: hidden;
+      transition: transform 240ms var(--ease), visibility 0s linear 240ms;
     }
-    #noteViewer.open {
-      transform: translateX(0);
-    }
+    #noteViewer.open { transform: translateX(0); visibility: visible; transition: transform 240ms var(--ease); }
     .viewer-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
       align-items: flex-start;
-      gap: 12px;
+      justify-content: space-between;
+      gap: var(--s3);
+      padding: var(--s5) var(--s6) var(--s4);
+      border-bottom: 1px solid var(--border);
     }
-    .viewer-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      line-height: 1.3;
-    }
-    .viewer-path {
-      font-size: 0.78rem;
-      font-family: var(--code-font);
-      color: var(--cyan);
-      margin-top: 4px;
-    }
+    .viewer-title { font-size: 20px; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; }
+    .viewer-path { margin-top: var(--s1); font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+    #viewerTags { margin-top: var(--s3); }
     .close-btn {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      display: inline-flex; align-items: center; justify-content: center;
       background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.25rem;
+      border: 1px solid transparent;
+      border-radius: var(--r);
+      color: var(--text-3);
       cursor: pointer;
-      padding: 4px 8px;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
     }
-    .close-btn:hover { color: var(--text); }
-    .viewer-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+    .close-btn:hover { background: var(--surface-2); color: var(--text); }
+    .viewer-body { flex: 1; overflow-y: auto; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s6); }
     .viewer-section-title {
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-3);
+      margin-bottom: var(--s2);
     }
-    .links-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
+    .links-grid { display: flex; flex-wrap: wrap; gap: var(--s2); font-size: 13px; color: var(--text-3); }
     .link-btn {
-      background: #090d16;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 var(--s3);
+      background: var(--surface);
       border: 1px solid var(--border);
-      color: var(--cyan);
-      font-size: 0.8rem;
-      padding: 5px 10px;
-      border-radius: 6px;
+      border-radius: var(--r);
+      color: var(--text);
+      font-size: 13px;
       cursor: pointer;
+      transition: border-color 150ms var(--ease), color 150ms var(--ease);
     }
-    .link-btn:hover {
-      background: var(--cyan-glow);
-      border-color: var(--cyan);
-    }
+    .link-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .link-btn .arrow { color: var(--text-3); }
+    .link-btn.tag { height: 28px; padding: 0 var(--s2); color: var(--text-2); background: var(--surface-2); border-color: transparent; }
+    .link-btn.tag:hover { color: var(--accent); border-color: transparent; }
     .note-content-box {
-      background: #080c14;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 14px;
-      font-size: 0.86rem;
-      line-height: 1.6;
-      color: #cbd5e1;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
       white-space: pre-wrap;
       word-break: break-word;
+      max-width: 68ch;
     }
-    .empty-state {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.88rem;
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      header { flex-wrap: wrap; gap: var(--s3); padding: var(--s3) var(--s4); }
+      .search-wrapper { order: 3; flex-basis: 100%; max-width: none; }
+      .search-kbd, .view-tabs { display: none; }
+      #searchPane { width: 100% !important; border-right: none; display: flex !important; }
+      #graphPane { display: none !important; }
+      .viewer-header { padding: var(--s4); }
+      .viewer-body { padding: var(--s4); }
     }
-    @media (max-width: 800px) {
-      #searchPane { width: 100%; border-right: none; }
-      #graphPane { display: none; }
-      #noteViewer { width: 100%; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <span>🧠 Brain</span>
-      <span class="brand-badge">Second Brain</span>
-    </div>
-    <div class="search-wrapper">
-      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="6" cy="6" r="2.5"></circle>
+        <circle cx="18" cy="8" r="2.5"></circle>
+        <circle cx="10" cy="18" r="2.5"></circle>
+        <path d="M8.3 7.1 15.6 7.6M7.2 8.3 9.1 15.6M16.6 10.1 11.7 16.2"></path>
       </svg>
-      <input type="text" id="searchInput" class="search-input" placeholder="Search notes, concepts, tags... (e.g. 'machine learning', 'zettelkasten')" autocomplete="off">
+      <span>Brain</span>
+    </div>
+    <div class="search-wrapper" role="search">
+      <label for="searchInput" class="sr-only">Search notes</label>
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="20" y1="20" x2="16" y2="16"></line>
+      </svg>
+      <input type="search" id="searchInput" class="search-input" placeholder="Search notes, ideas or tags" autocomplete="off" spellcheck="false">
+      <kbd class="search-kbd">/</kbd>
     </div>
     <div class="controls">
-      <div class="toggle-group" title="Toggle Search Mode">
-        <button id="keywordModeBtn" class="toggle-btn active">Keyword (TF-IDF)</button>
-        <button id="semanticModeBtn" class="toggle-btn">Semantic (LSA)</button>
+      <div class="segmented" role="group" aria-label="Search mode">
+        <button id="keywordModeBtn" class="toggle-btn active" title="Ranks notes by the words you type (TF-IDF)">Keyword</button>
+        <button id="semanticModeBtn" class="toggle-btn" title="Also finds notes about related ideas, even without your exact words (LSA)">Semantic</button>
       </div>
-      <div class="view-tabs">
-        <button id="viewSplitBtn" class="view-btn active">Split</button>
+      <div class="segmented view-tabs" role="group" aria-label="Layout">
         <button id="viewListBtn" class="view-btn">List</button>
+        <button id="viewSplitBtn" class="view-btn active">Split</button>
         <button id="viewGraphBtn" class="view-btn">Graph</button>
       </div>
     </div>
   </header>
   <main>
-    <section id="searchPane">
+    <section id="searchPane" aria-label="Search results">
       <div class="pane-header">
-        <span id="resultsCount">0 notes indexed</span>
-        <span id="statusIndicator" style="color: var(--emerald);">Ready</span>
+        <span id="resultsCount">Loading notes…</span>
+        <span id="statusIndicator" role="status" aria-live="polite">Ready</span>
       </div>
-      <div id="resultsList" class="results-list">
-        <div class="empty-state">Enter a search query above to explore notes.</div>
-      </div>
+      <div id="resultsList" class="results-list"></div>
     </section>
-    <section id="graphPane">
-      <canvas id="graphCanvas"></canvas>
-      <div class="graph-legend">
-        <div class="legend-item"><div class="legend-dot" style="background: var(--cyan);"></div> Note Node</div>
-        <div class="legend-item"><div class="legend-dot" style="background: var(--amber);"></div> Orphan Note (Isolated)</div>
-        <div class="legend-item"><div class="legend-dot" style="background: var(--rose);"></div> Broken Target</div>
+    <section id="graphPane" aria-label="Knowledge graph">
+      <canvas id="graphCanvas" aria-label="Graph of notes and the links between them. Click a node to open the note."></canvas>
+      <div class="graph-legend" aria-hidden="true">
+        <div class="legend-item"><span class="legend-dot note"></span>Note</div>
+        <div class="legend-item"><span class="legend-dot hub"></span>Hub (5+ links)</div>
+        <div class="legend-item"><span class="legend-dot orphan"></span>Orphan (no links)</div>
       </div>
+      <div class="graph-hint" aria-hidden="true">Drag to rearrange · click to open</div>
     </section>
-    <aside id="noteViewer">
+    <aside id="noteViewer" aria-label="Note" aria-hidden="true">
       <div class="viewer-header">
         <div>
-          <div id="viewerTitle" class="viewer-title">Note Title</div>
+          <h2 id="viewerTitle" class="viewer-title">Note title</h2>
           <div id="viewerPath" class="viewer-path">path.md</div>
-        </div>
-        <button id="closeViewerBtn" class="close-btn">&times;</button>
-      </div>
-      <div class="viewer-body">
-        <div>
-          <div class="viewer-section-title">Tags</div>
           <div id="viewerTags" class="links-grid"></div>
         </div>
+        <button id="closeViewerBtn" class="close-btn" aria-label="Close note (Esc)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="viewer-body">
+        <div id="viewerContent" class="note-content-box"></div>
         <div>
-          <div class="viewer-section-title">Outgoing Links</div>
+          <div class="viewer-section-title">Links to</div>
           <div id="viewerOutlinks" class="links-grid"></div>
         </div>
         <div>
-          <div class="viewer-section-title">Backlinks (Incoming)</div>
+          <div class="viewer-section-title">Linked from</div>
           <div id="viewerBacklinks" class="links-grid"></div>
-        </div>
-        <div>
-          <div class="viewer-section-title">Note Content</div>
-          <div id="viewerContent" class="note-content-box"></div>
         </div>
       </div>
     </aside>
@@ -479,6 +557,11 @@
       return container;
     }
 
+    function setStatus(text, stateName) {
+      statusIndicator.textContent = text;
+      statusIndicator.dataset.state = stateName;
+    }
+
     function debounce(fn, delay) {
       let timer = null;
       return function (...args) {
@@ -493,15 +576,14 @@
         if (res.ok) {
           const data = await res.json();
           state.hasNumpy = !!data.has_numpy;
-          resultsCount.textContent = `${data.indexed_notes} notes indexed`;
+          resultsCount.textContent = `${data.indexed_notes} notes`;
           if (!state.hasNumpy) {
             semanticModeBtn.disabled = true;
             semanticModeBtn.title = "numpy is not installed on server";
           }
         }
       } catch (err) {
-        statusIndicator.textContent = "Offline";
-        statusIndicator.style.color = "var(--rose)";
+        setStatus("Offline", "error");
       }
     }
 
@@ -509,15 +591,13 @@
       const q = searchInput.value.trim();
       state.query = q;
       if (!q) {
-        resultsList.innerHTML = "";
-        const empty = document.createElement("div");
-        empty.className = "empty-state";
-        empty.textContent = "Enter a search query above to explore notes.";
-        resultsList.appendChild(empty);
+        state.currentResults = [];
+        renderWelcome();
+        renderGraph();
+        setStatus("Ready", "ok");
         return;
       }
-      statusIndicator.textContent = "Searching...";
-      statusIndicator.style.color = "var(--cyan)";
+      setStatus("Searching…", "busy");
 
       try {
         const url = `/api/search?q=${encodeURIComponent(q)}&k=20&semantic=${state.semantic}`;
@@ -529,66 +609,143 @@
         const data = await res.json();
         state.currentResults = data.results || [];
         renderResults(state.currentResults);
-        statusIndicator.textContent = `${data.total_results} found`;
-        statusIndicator.style.color = "var(--emerald)";
+        renderGraph();
+        const n = data.total_results;
+        setStatus(`${n} ${n === 1 ? "match" : "matches"}${state.semantic ? " · semantic" : ""}`, "ok");
       } catch (err) {
-        resultsList.innerHTML = "";
+        resultsList.replaceChildren();
         const errDiv = document.createElement("div");
-        errDiv.className = "empty-state";
-        errDiv.style.color = "var(--rose)";
-        errDiv.textContent = `Search error: ${err.message}`;
+        errDiv.className = "empty-state error";
+        errDiv.textContent = `Search failed: ${err.message}`;
         resultsList.appendChild(errDiv);
-        statusIndicator.textContent = "Error";
-        statusIndicator.style.color = "var(--rose)";
+        setStatus("Error", "error");
       }
     }
 
+    const SUGGESTIONS = ["spaced repetition", "gradient descent", "zettelkasten", "graph traversal"];
+
+    function renderWelcome() {
+      resultsList.replaceChildren();
+      const box = document.createElement("div");
+      box.className = "empty-state";
+
+      const h = document.createElement("h2");
+      h.textContent = "Find any note in milliseconds";
+      const p = document.createElement("p");
+      p.textContent = "Results are ranked by relevance and show the passage that matched. Open a note to read it and follow its links.";
+
+      const sugg = document.createElement("div");
+      sugg.className = "suggestions";
+      for (const s of SUGGESTIONS) {
+        const b = document.createElement("button");
+        b.className = "suggestion";
+        b.textContent = s;
+        b.addEventListener("click", () => {
+          searchInput.value = s;
+          executeSearch();
+        });
+        sugg.appendChild(b);
+      }
+
+      const hint = document.createElement("div");
+      hint.className = "hint";
+      for (const [key, label] of [["/", "Search"], ["Esc", "Close note"]]) {
+        const span = document.createElement("span");
+        const k = document.createElement("kbd");
+        k.textContent = key;
+        span.append(k, label);
+        hint.appendChild(span);
+      }
+
+      box.append(h, p, sugg, hint);
+      resultsList.appendChild(box);
+    }
+
     function renderResults(results) {
-      resultsList.innerHTML = "";
+      resultsList.replaceChildren();
       if (results.length === 0) {
         const empty = document.createElement("div");
         empty.className = "empty-state";
-        empty.textContent = `No notes found matching "${state.query}".`;
+        const h = document.createElement("h2");
+        h.textContent = "No matching notes";
+        const p = document.createElement("p");
+        p.textContent = state.semantic
+          ? `Nothing related to "${state.query}". Try fewer or broader words.`
+          : `No note mentions "${state.query}". Try Semantic mode to find related ideas.`;
+        empty.append(h, p);
         resultsList.appendChild(empty);
         return;
       }
+      const top = results[0].score || 1;
       for (const item of results) {
-        const card = document.createElement("div");
+        const card = document.createElement("button");
+        card.type = "button";
         card.className = "result-card";
+        card.dataset.path = item.path;
         card.addEventListener("click", () => openNote(item.path));
 
-        const top = document.createElement("div");
-        top.className = "result-top";
-
+        const row = document.createElement("div");
+        row.className = "result-top";
         const title = document.createElement("div");
         title.className = "result-title";
         title.textContent = item.title || item.path;
+        const rel = document.createElement("div");
+        rel.className = "relevance";
+        rel.title = `Relevance ${item.score.toFixed(3)}`;
+        const fill = document.createElement("span");
+        fill.style.width = `${Math.max(8, Math.round((item.score / top) * 100))}%`;
+        rel.appendChild(fill);
+        row.append(title, rel);
 
-        const score = document.createElement("div");
-        score.className = "score-badge";
-        score.textContent = item.score.toFixed(4);
+        const path = document.createElement("div");
+        path.className = "result-path";
+        path.textContent = item.path;
 
-        top.appendChild(title);
-        top.appendChild(score);
-        card.appendChild(top);
-
-        const meta = document.createElement("div");
-        meta.className = "result-meta";
-        const pathSpan = document.createElement("span");
-        pathSpan.textContent = item.path;
-        meta.appendChild(pathSpan);
+        card.append(row, path, buildSafeSnippetElement(item.snippet, item.highlights));
 
         if (item.tags && item.tags.length > 0) {
-          for (const t of item.tags) {
+          const tags = document.createElement("div");
+          tags.className = "result-tags";
+          for (const t of item.tags.slice(0, 3)) {
             const chip = document.createElement("span");
             chip.className = "tag-chip";
             chip.textContent = `#${t}`;
-            meta.appendChild(chip);
+            tags.appendChild(chip);
           }
+          if (item.tags.length > 3) {
+            const more = document.createElement("span");
+            more.className = "tag-chip";
+            more.textContent = `+${item.tags.length - 3}`;
+            tags.appendChild(more);
+          }
+          card.appendChild(tags);
         }
-        card.appendChild(meta);
-        card.appendChild(buildSafeSnippetElement(item.snippet, item.highlights));
         resultsList.appendChild(card);
+      }
+    }
+
+    function noteLabel(path) {
+      return String(path).replace(/\.md$/i, "");
+    }
+
+    function linkButton(path, arrow) {
+      const btn = document.createElement("button");
+      btn.className = "link-btn";
+      const a = document.createElement("span");
+      a.className = "arrow";
+      a.setAttribute("aria-hidden", "true");
+      a.textContent = arrow;
+      btn.append(a, noteLabel(path));
+      btn.addEventListener("click", () => openNote(path));
+      return btn;
+    }
+
+    function fillLinks(container, links, arrow, emptyText) {
+      container.replaceChildren();
+      if (links && links.length > 0) {
+        for (const link of links) container.appendChild(linkButton(link, arrow));
+      } else {
+        container.textContent = emptyText;
       }
     }
 
@@ -600,58 +757,56 @@
 
         viewerTitle.textContent = doc.title || doc.path;
         viewerPath.textContent = doc.path;
-        viewerContent.textContent = (doc.body ?? doc.content) || "No content.";
+        viewerContent.textContent = (doc.body ?? doc.content) || "This note is empty.";
 
-        viewerTags.innerHTML = "";
-        if (doc.tags && doc.tags.length > 0) {
-          for (const tag of doc.tags) {
-            const btn = document.createElement("button");
-            btn.className = "link-btn";
-            btn.textContent = `#${tag}`;
-            btn.addEventListener("click", () => {
-              searchInput.value = tag;
-              executeSearch();
-            });
-            viewerTags.appendChild(btn);
-          }
-        } else {
-          viewerTags.textContent = "None";
+        viewerTags.replaceChildren();
+        for (const tag of doc.tags || []) {
+          const btn = document.createElement("button");
+          btn.className = "link-btn tag";
+          btn.textContent = `#${tag}`;
+          btn.title = `Search for #${tag}`;
+          btn.addEventListener("click", () => {
+            searchInput.value = tag;
+            executeSearch();
+          });
+          viewerTags.appendChild(btn);
         }
 
-        viewerOutlinks.innerHTML = "";
-        if (doc.outlinks && doc.outlinks.length > 0) {
-          for (const link of doc.outlinks) {
-            const btn = document.createElement("button");
-            btn.className = "link-btn";
-            btn.textContent = `-> ${link}`;
-            btn.addEventListener("click", () => openNote(link));
-            viewerOutlinks.appendChild(btn);
-          }
-        } else {
-          viewerOutlinks.textContent = "None";
-        }
+        fillLinks(viewerOutlinks, doc.outlinks, "→", "This note doesn't link to other notes.");
+        fillLinks(viewerBacklinks, doc.backlinks, "←", "No other note links here yet.");
 
-        viewerBacklinks.innerHTML = "";
-        if (doc.backlinks && doc.backlinks.length > 0) {
-          for (const link of doc.backlinks) {
-            const btn = document.createElement("button");
-            btn.className = "link-btn";
-            btn.textContent = `<- ${link}`;
-            btn.addEventListener("click", () => openNote(link));
-            viewerBacklinks.appendChild(btn);
-          }
-        } else {
-          viewerBacklinks.textContent = "None";
+        for (const c of resultsList.querySelectorAll(".result-card")) {
+          c.classList.toggle("selected", c.dataset.path === doc.path);
         }
-
+        noteViewer.querySelector(".viewer-body").scrollTop = 0;
         noteViewer.classList.add("open");
+        noteViewer.setAttribute("aria-hidden", "false");
       } catch (err) {
         console.error("Failed to load note:", err);
       }
     }
 
-    closeViewerBtn.addEventListener("click", () => {
+    function closeViewer() {
       noteViewer.classList.remove("open");
+      noteViewer.setAttribute("aria-hidden", "true");
+      for (const c of resultsList.querySelectorAll(".result-card.selected")) c.classList.remove("selected");
+    }
+
+    closeViewerBtn.addEventListener("click", closeViewer);
+
+    document.addEventListener("keydown", (e) => {
+      const typing = e.target instanceof HTMLElement && e.target.matches("input, textarea, [contenteditable]");
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      } else if (e.key === "Escape") {
+        if (noteViewer.classList.contains("open")) closeViewer();
+        else if (document.activeElement === searchInput && searchInput.value) {
+          searchInput.value = "";
+          executeSearch();
+        }
+      }
     });
 
     keywordModeBtn.addEventListener("click", () => {
@@ -671,7 +826,7 @@
 
     viewSplitBtn.addEventListener("click", () => {
       searchPane.style.display = "flex";
-      searchPane.style.width = "440px";
+      searchPane.style.width = "420px";
       graphPane.style.display = "block";
       viewSplitBtn.classList.add("active");
       viewListBtn.classList.remove("active");
@@ -738,6 +893,7 @@
         if (!res.ok) return;
         const data = await res.json();
         state.graphData = data;
+        resultsCount.textContent = `${(data.nodes || []).length} notes · ${(data.edges || []).length} links`;
         initSimulation(data);
       } catch (err) {
         console.error("Failed to load graph data:", err);
@@ -859,59 +1015,80 @@
       }
     }
 
+    let palette = null;
+    function readPalette() {
+      const css = getComputedStyle(document.documentElement);
+      const v = (name) => css.getPropertyValue(name).trim();
+      palette = {
+        node: v("--graph-node"),
+        hub: v("--accent"),
+        edge: v("--graph-edge"),
+        label: v("--graph-label"),
+        text: v("--text"),
+        orphan: v("--text-3"),
+        bg: v("--graph-bg"),
+        font: v("--font"),
+      };
+    }
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      readPalette();
+      renderGraph();
+    });
+
     function renderGraph() {
+      if (!palette) readPalette();
       ctx.clearRect(0, 0, simulation.width, simulation.height);
 
+      ctx.lineWidth = 1;
       for (const e of simulation.edges) {
         ctx.beginPath();
         ctx.moveTo(e.source.x, e.source.y);
         ctx.lineTo(e.target.x, e.target.y);
-        if (e.isBroken) {
-          ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
-          ctx.setLineDash([4, 4]);
-        } else {
-          ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
-          ctx.setLineDash([]);
-        }
-        ctx.lineWidth = 1;
+        ctx.setLineDash(e.isBroken ? [4, 4] : []);
+        ctx.strokeStyle = palette.edge;
         ctx.stroke();
       }
       ctx.setLineDash([]);
 
+      const active = simulation.hoveredNode || simulation.draggedNode;
+      // Notes in the current results are highlighted; everything else steps back.
+      const matched = new Set((state.currentResults || []).map((r) => r.path));
+      const searching = matched.size > 0;
       for (const n of simulation.nodes) {
+        const isMatch = matched.has(n.id);
+        ctx.globalAlpha = searching && !isMatch && n !== active ? 0.35 : 1;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-
         if (n.isOrphan) {
-          ctx.fillStyle = "#f59e0b";
+          ctx.fillStyle = palette.bg;
           ctx.fill();
-          ctx.strokeStyle = "#fbbf24";
+          ctx.strokeStyle = palette.orphan;
           ctx.lineWidth = 2;
           ctx.stroke();
-        } else if (n.degree >= 5) {
-          ctx.fillStyle = "#38bdf8";
-          ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
-          ctx.shadowBlur = 8;
-          ctx.fill();
-          ctx.shadowBlur = 0;
         } else {
-          ctx.fillStyle = "#0284c7";
+          ctx.fillStyle = n.degree >= 5 || n === active || isMatch ? palette.hub : palette.node;
           ctx.fill();
         }
 
-        if (n === simulation.hoveredNode || n === simulation.draggedNode) {
+        if (n === active) {
           ctx.beginPath();
           ctx.arc(n.x, n.y, n.radius + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = "#38bdf8";
+          ctx.strokeStyle = palette.hub;
           ctx.lineWidth = 2;
           ctx.stroke();
         }
 
-        ctx.font = "11px -apple-system, sans-serif";
-        ctx.fillStyle = n === simulation.hoveredNode ? "#f8fafc" : "#94a3b8";
-        ctx.textAlign = "center";
-        ctx.fillText(n.title, n.x, n.y + n.radius + 13);
+        // Label only what matters so names stay readable: hubs, orphans,
+        // search matches and the node under the cursor. Others show on hover.
+        const showLabel = n === active || isMatch || (!searching && (n.degree >= 5 || n.isOrphan));
+        if (showLabel) {
+          ctx.font = `${n === active || isMatch ? 600 : 400} 12px ${palette.font}`;
+          ctx.fillStyle = n === active || isMatch ? palette.text : palette.label;
+          ctx.textAlign = "center";
+          ctx.fillText(n.title, n.x, n.y + n.radius + 14);
+        }
       }
+      ctx.globalAlpha = 1;
     }
 
     function findNodeAt(x, y) {
@@ -974,6 +1151,7 @@
     });
 
     window.addEventListener("DOMContentLoaded", async () => {
+      renderWelcome();
       resizeCanvas();
       await checkHealth();
       await loadGraphData();
