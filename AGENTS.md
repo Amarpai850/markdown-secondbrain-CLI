@@ -45,5 +45,5 @@ pytest tests/test_api.py -v
 - **Tests:** 75 tests passing across 9 test modules (`pytest -v`).
 
 ### Remaining
-- **Deployment & Live Verification (Person A):** Build/deploy to Cloud Run (`gcloud run deploy --source .`), verify live `/health`, `/api/search`, `/api/graph`, traversal 404s, and rate-limit behavior.
+- ~~**Deployment & Live Verification:**~~ Done: live on Render at https://brain-search-engine.onrender.com; `/health`, search (keyword + semantic), notes, graph, CSP headers, traversal 404s, query validation and rate limiting verified live.
 - ~~**Feature & Polish Enhancements (Person B):**~~ Done: LSA rank selection and edge cases, tag boosting, frontmatter-free note viewer (`body` field on `/api/note`), two extra sample notes (20 total), and tests.
