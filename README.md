@@ -2,6 +2,8 @@
 
 > A high-performance, offline-first personal knowledge management (PKM) CLI, search engine, and interactive graph visualizer built in Python with a zero-dependency web interface.
 
+**Live demo:** https://brain-search-engine.onrender.com (sample notes only; on the free tier the first request after ~15 idle minutes takes up to a minute while the service wakes up)
+
 ---
 
 ## Architecture Overview
@@ -299,7 +301,7 @@ gcloud run deploy brain `
 2. Click **New +** > **Blueprint** and select this repository (`main` branch).
 3. Render reads `render.yaml` and shows the `brain-search-engine` service. Click **Apply**.
 4. Render builds the multi-stage Dockerfile. The build **fails if any test fails** (Stage 1), so a red build usually means a failing test: open the build log and search for `FAILED`.
-5. When the deploy turns green, the app is live at `https://brain-search-engine.onrender.com` (or a similar URL shown on the service page).
+5. When the deploy turns green, the app is live. This project's deployment: https://brain-search-engine.onrender.com
 
 Every push to `main` redeploys automatically (`autoDeploy: true`).
 
@@ -315,9 +317,9 @@ Remaining work is divided equally between both collaborators:
 
 | Person A (Amarpai850) | Person B (Partner) |
 | :--- | :--- |
-| Docker and Google Cloud Run deployment (`gcloud run deploy --source .`) | ✅ LSA / semantic search tuning (rank/k selection & edge cases) |
-| Live deployed endpoint verification (`/health`, `/api/search`, `/api/graph`, path traversal checks) | ✅ Tag boosting for search ranking |
-| Rate-limit checks against the live reverse-proxy environment | ✅ Web UI polish (strip YAML frontmatter in the note viewer) |
+| ✅ Deployed on Render: https://brain-search-engine.onrender.com | ✅ LSA / semantic search tuning (rank/k selection & edge cases) |
+| ✅ Live endpoint verification (`/health`, `/api/search`, `/api/graph`, path traversal checks) | ✅ Tag boosting for search ranking |
+| ✅ Rate-limit checks against the live reverse-proxy environment (429 + `Retry-After`, spoofed `X-Forwarded-For` rejected) | ✅ Web UI polish (strip YAML frontmatter in the note viewer) |
 | Final deployment walkthrough & teardown verification | ✅ Extra sample notes, unit/integration tests, and README improvements |
 
 ---
